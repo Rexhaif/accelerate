@@ -26,6 +26,7 @@ from accelerate.utils.imports import (
     is_8bit_bnb_available,
 )
 
+from ..state import PartialState
 from ..big_modeling import dispatch_model, init_empty_weights
 from .dataclasses import BnbQuantizationConfig
 from .modeling import (
@@ -145,10 +146,10 @@ def load_and_quantize_model(
                 param.to(dtype)
         if model_device.type == "cuda":
             # move everything to cpu in the first place because we can't do quantization if the weights are already on cuda
-            model.cuda(torch.cuda.current_device())
+            model.cuda(PartialState().device)
             torch.cuda.empty_cache()
         elif torch.cuda.is_available():
-            model.to(torch.cuda.current_device())
+            model.to(PartialState().device)
         else:
             raise RuntimeError("No GPU found. A GPU is needed for quantization.")
         logger.info(
@@ -198,10 +199,10 @@ def get_quantized_model_device_map(
 ):
     if device_map is None:
         if torch.cuda.is_available():
-            device_map = {"": torch.cuda.current_device()}
+            device_map = {"": PartialState().device}
         else:
             raise RuntimeError("No GPU found. A GPU is needed for quantization.")
-        logger.info("The device_map was not initialized." "Setting device_map to `{'':torch.cuda.current_device()}`.")
+        logger.info(f"The device_map was not initialized." "Setting device_map to `{{'':{PartialState.device()}}}`.")
 
     if isinstance(device_map, str):
         if device_map not in ["auto", "balanced", "balanced_low_0", "sequential"]:

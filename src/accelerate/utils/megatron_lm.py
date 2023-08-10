@@ -22,6 +22,7 @@ import torch.nn.functional as F
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 
+from ..state import PartialState
 from ..optimizer import AcceleratedOptimizer
 from ..scheduler import AcceleratedScheduler
 from .imports import is_megatron_lm_available, is_transformers_available
@@ -511,7 +512,7 @@ class BertTrainStep(AbstractTrainStep):
         def get_batch_transformer(data_iterator):
             """Build the batch."""
             data = next(data_iterator)
-            data = send_to_device(data, torch.cuda.current_device())
+            data = send_to_device(data, PartialState().device)
 
             # Unpack.
             tokens = data["input_ids"].long()
@@ -648,7 +649,7 @@ class GPTTrainStep(AbstractTrainStep):
         def get_batch_transformer(data_iterator):
             data = next(data_iterator)
             data = {"input_ids": data["input_ids"]}
-            data = send_to_device(data, torch.cuda.current_device())
+            data = send_to_device(data, PartialState().device)
 
             tokens_ = data["input_ids"].long()
             padding = torch.zeros((tokens_.shape[0], 1), dtype=tokens_.dtype, device=tokens_.device) + self.eod_token
@@ -778,7 +779,7 @@ class T5TrainStep(AbstractTrainStep):
         def get_batch_transformer(data_iterator):
             """Build the batch."""
             data = next(data_iterator)
-            data = send_to_device(data, torch.cuda.current_device())
+            data = send_to_device(data, PartialState().device)
 
             tokens_enc = data["input_ids"].long()
             labels = data["labels"].long()
